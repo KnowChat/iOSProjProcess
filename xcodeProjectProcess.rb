@@ -6,9 +6,11 @@ class XCProjectFind
       @projectPath = path; 
       @project = Xcodeproj::Project.open(@projectPath);
       @rootgroup = @project.groups[rootIndex]
+      @rootIndx = rootIndex;
     else
       @project = project;
       @rootgroup = root;
+      @rootIndx = rootIndex
     end
   end
   # 田间文件
@@ -23,7 +25,7 @@ class XCProjectFind
       end
     end
     self.save();
-    return XCProjectFind.new(nil,@project,path);
+    return XCProjectFind.new(nil,@project,path,@rootIndx);
   end
   def findPath(group,name)
     return group.find_subpath(name,true);
@@ -37,7 +39,27 @@ class XCProjectFind
     xcpathobj = @rootgroup.find_subpath(xcPath,true)
     xcpathobj.path = realpath
     self.save();
-    return XCProjectFind.new(nil,@project,xcpathobj);
+    return XCProjectFind.new(nil,@project,xcpathobj,@rootIndx);
+  end
+  def addSourcePaths(xcPath)
+    xcpathobj = @rootgroup
+    for i in xcPath.split("/") do
+      xcpathobj = xcpathobj.find_subpath(i,true);
+      xcpathobj.path = i;
+    end
+    self.save();
+    paths = @projectPath.split("/");
+    paths.delete_at(paths.length - 1)
+    pathStr = paths.join("/") + "/" + @project.groups[@rootIndx].path
+    puts(pathStr);
+    Dir::chdir(pathStr);
+    for i in xcPath.split("/") do
+      if(!File.directory?(i))
+        Dir.mkdir(i);
+      end
+      Dir.chdir(i);
+    end
+    return XCProjectFind.new(nil,@project,xcpathobj,@rootIndx);
   end
   #保存文件
   def save
@@ -55,7 +77,7 @@ class XCProjectFind
       if(autocreate == true)
         
       end
-      find = XCProjectFind.new(nil,@project,xcpathobj);
+      find = XCProjectFind.new(nil,@project,xcpathobj,@rootIndx);
       find.save();
       return find;
   end
